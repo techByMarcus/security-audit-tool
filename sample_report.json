@@ -1,0 +1,54 @@
+{
+    "system_info": {
+        "hostname": "DESKTOP-EXAMPLE",
+        "os": "Windows",
+        "os_version": "10.0.19045",
+        "architecture": "AMD64",
+        "audit_time": "2025-09-01 14:32:00",
+        "auditor": "Marcus Albright",
+        "ip_address": "192.168.1.10"
+    },
+    "score": {
+        "earned": 8,
+        "total": 10,
+        "percentage": 80,
+        "risk_rating": "LOW RISK"
+    },
+    "results": [
+        {
+            "check": "Operating System Identification",
+            "status": "PASS",
+            "detail": "Operating system detected: Windows",
+            "recommendation": "Ensure OS is fully patched and hardening guides are applied (CIS Benchmarks recommended).",
+            "nist_ref": "PR.IP-1"
+        },
+        {
+            "check": "Open Port Scan (Localhost)",
+            "status": "PASS",
+            "detail": "No commonly targeted ports detected as open on localhost.",
+            "recommendation": "Close or firewall any unused ports. Disable Telnet (port 23) immediately.",
+            "nist_ref": "PR.AC-3"
+        },
+        {
+            "check": "Environment Variable Sensitivity Scan",
+            "status": "WARNING",
+            "detail": "Potentially sensitive environment variables found: AWS_SECRET_KEY",
+            "recommendation": "Never store passwords or API keys in environment variables in production. Use a secrets manager.",
+            "nist_ref": "PR.DS-1"
+        },
+        {
+            "check": "Python Runtime Version Check",
+            "status": "PASS",
+            "detail": "Python 3.11.4 is current and supported.",
+            "recommendation": "Always run supported software versions. Check python.org/downloads for the latest stable release.",
+            "nist_ref": "PR.IP-12"
+        },
+        {
+            "check": "Temp Directory Sensitive File Scan",
+            "status": "PASS",
+            "detail": "No sensitive file types found in C:\\Windows\\Temp.",
+            "recommendation": "Regularly clear temp directories. Never store credentials or keys in temp folders.",
+            "nist_ref": "PR.DS-3"
+        }
+    ]
+}
