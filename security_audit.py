@@ -1,375 +1,513 @@
+#!/usr/bin/env python3
 """
-=============================================================
-  Security Audit Checklist Tool
-  Author: Marcus Albright
-  Description: A beginner-friendly Python tool that performs
-               basic security checks on a system and generates
-               a structured audit report. Aligned with NIST
-               Cybersecurity Framework controls.
-=============================================================
+Security Audit Tool - Enhanced Version
+Author: Marcus Albright
+Purpose: Automated local system security checks with structured reporting
+Framework: NIST Cybersecurity Framework (CSF)
+Python Level: Beginner with intermediate practices
 """
 
 import os
-import platform
 import socket
-import datetime
+import platform
 import json
-
-# ─────────────────────────────────────────────
-# SECTION 1: SYSTEM INFORMATION
-# Gather basic info about the machine being audited
-# ─────────────────────────────────────────────
-
-def get_system_info():
-    """Collect basic operating system and network information."""
-    print("[*] Gathering system information...")
-
-    info = {
-        "hostname":       socket.gethostname(),
-        "os":             platform.system(),
-        "os_version":     platform.version(),
-        "architecture":   platform.machine(),
-        "audit_time":     datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "auditor":        "Marcus Albright"
-    }
-
-    # Try to get the local IP address
-    try:
-        info["ip_address"] = socket.gethostbyname(socket.gethostname())
-    except Exception:
-        info["ip_address"] = "Unable to retrieve"
-
-    return info
+import sys
+import argparse
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 
-# ─────────────────────────────────────────────
-# SECTION 2: SECURITY CHECKS
-# Each function below checks one security control.
-# Returns a dict with: check name, status, and recommendation.
-# ─────────────────────────────────────────────
-
-def check_os_type():
+class SecurityAudit:
     """
-    Identify the operating system.
-    Different OS types have different hardening requirements.
-    NIST CSF Reference: PR.IP-1 (Baseline configuration)
+    Main audit class that encapsulates all security checks.
+    Using a class helps organize related functions and maintain state.
     """
-    os_name = platform.system()
 
-    if os_name in ["Windows", "Linux", "Darwin"]:
-        status = "INFO"
-        detail = f"Operating system detected: {os_name}"
-        recommendation = "Ensure OS is fully patched and hardening guides are applied (CIS Benchmarks recommended)."
-    else:
-        status = "WARNING"
-        detail = f"Unrecognized OS: {os_name}"
-        recommendation = "Verify OS identity and apply appropriate security baseline."
+    def __init__(self, auditor_name: str = "Security Audit Tool"):
+        """
+        Initialize the audit with metadata.
+        
+        Args:
+            auditor_name: Name of the auditor running the checks
+        """
+        self.auditor_name = auditor_name
+        self.hostname = socket.gethostname()
+        self.ip_address = self._get_ip_address()
+        self.os_type = platform.system()
+        self.audit_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.checks_passed = 0
+        self.checks_failed = 0
+        self.findings = []
 
-    return {
-        "check":          "Operating System Identification",
-        "status":         status,
-        "detail":         detail,
-        "recommendation": recommendation,
-        "nist_ref":       "PR.IP-1"
-    }
-
-
-def check_open_ports():
-    """
-    Scan common ports on localhost to detect open services.
-    Open ports = potential attack surface.
-    NIST CSF Reference: PR.AC-3 (Remote access management)
-    """
-    print("[*] Checking open ports (this may take a moment)...")
-
-    # List of common ports to check
-    # In a real SOC environment, tools like Nmap would be used
-    common_ports = {
-        21:   "FTP",
-        22:   "SSH",
-        23:   "Telnet",
-        25:   "SMTP",
-        80:   "HTTP",
-        443:  "HTTPS",
-        3306: "MySQL",
-        3389: "RDP (Remote Desktop)",
-        8080: "HTTP Alternate",
-        8443: "HTTPS Alternate"
-    }
-
-    open_ports   = []
-    risky_ports  = [21, 23, 3389]  # These ports are commonly exploited
-
-    for port, service in common_ports.items():
+    def _get_ip_address(self) -> str:
+        """
+        Safely retrieve local IP address.
+        Uses socket to connect without sending data (no external traffic).
+        
+        Returns:
+            IP address string or 'UNKNOWN' if retrieval fails
+        """
         try:
-            # Create a socket and attempt connection
-            # timeout=0.5 means we wait 0.5 seconds before giving up
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(0.5)
-            result = sock.connect_ex(("127.0.0.1", port))
-            sock.close()
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception as e:
+            print(f"⚠️  Warning: Could not determine IP address: {e}")
+            return "UNKNOWN"
 
-            if result == 0:  # 0 means the port is open
-                risk = "HIGH RISK" if port in risky_ports else "OPEN"
-                open_ports.append(f"Port {port} ({service}) - {risk}")
-        except Exception:
-            pass  # If we can't check the port, skip it
+    def check_os_identification(self) -> Dict:
+        """
+        Check 1: Identify operating system and version.
+        NIST CSF Reference: PR.IP-1 (Information Protection Processes)
+        
+        Returns:
+            Dictionary with check results
+        """
+        try:
+            os_info = f"{self.os_type} {platform.release()}"
+            
+            recommendations = {
+                "Windows": "Run Windows Update, enable Windows Defender, configure Windows Firewall",
+                "Linux": "Keep packages updated (apt/yum), harden SSH config, configure UFW/iptables",
+                "Darwin": "Keep macOS updated, enable FileVault encryption, configure built-in firewall"
+            }
+            
+            fix = recommendations.get(self.os_type, "Ensure OS is patched and hardening guides applied")
+            
+            result = {
+                "check_number": 1,
+                "name": "Operating System Identification",
+                "status": "PASS",
+                "detail": f"OS: {os_info}",
+                "fix": fix,
+                "nist_ref": "PR.IP-1",
+                "severity": "INFO"
+            }
+            self.checks_passed += 1
+            return result
+            
+        except Exception as e:
+            return {
+                "check_number": 1,
+                "name": "Operating System Identification",
+                "status": "FAIL",
+                "detail": str(e),
+                "fix": "Review system configuration",
+                "nist_ref": "PR.IP-1",
+                "severity": "HIGH"
+            }
 
-    if not open_ports:
-        status = "PASS"
-        detail = "No commonly targeted ports detected as open on localhost."
-    elif any("HIGH RISK" in p for p in open_ports):
-        status = "FAIL"
-        detail = f"High-risk ports detected: {', '.join(open_ports)}"
-    else:
-        status = "WARNING"
-        detail = f"Open ports found: {', '.join(open_ports)}"
-
-    return {
-        "check":          "Open Port Scan (Localhost)",
-        "status":         status,
-        "detail":         detail,
-        "recommendation": "Close or firewall any unused ports. Disable Telnet (port 23) immediately — it transmits data unencrypted.",
-        "nist_ref":       "PR.AC-3"
-    }
-
-
-def check_environment_variables():
-    """
-    Check if sensitive data is stored in environment variables.
-    Developers sometimes accidentally store passwords/keys here.
-    NIST CSF Reference: PR.DS-1 (Data-at-rest protection)
-    """
-    print("[*] Scanning environment variables for sensitive data...")
-
-    # Keywords that suggest sensitive data
-    sensitive_keywords = [
-        "password", "passwd", "secret", "api_key", "apikey",
-        "token", "private_key", "aws_secret", "db_pass"
-    ]
-
-    flagged_vars = []
-
-    for var_name in os.environ:
-        # Check if the variable name contains a sensitive keyword
-        var_lower = var_name.lower()
-        for keyword in sensitive_keywords:
-            if keyword in var_lower:
-                # We flag the name but NEVER print the value (security best practice)
-                flagged_vars.append(var_name)
-                break
-
-    if not flagged_vars:
-        status = "PASS"
-        detail = "No obviously sensitive variable names detected in environment."
-    else:
-        status = "WARNING"
-        detail = f"Potentially sensitive environment variables found: {', '.join(flagged_vars)}"
-
-    return {
-        "check":          "Environment Variable Sensitivity Scan",
-        "status":         status,
-        "detail":         detail,
-        "recommendation": "Never store passwords or API keys in environment variables in production. Use a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault).",
-        "nist_ref":       "PR.DS-1"
-    }
-
-
-def check_python_version():
-    """
-    Verify Python version is current and supported.
-    Outdated software versions contain known vulnerabilities (CVEs).
-    NIST CSF Reference: PR.IP-12 (Vulnerability management)
-    """
-    print("[*] Checking Python version...")
-
-    version     = platform.python_version()
-    major, minor, patch = [int(x) for x in version.split(".")]
-
-    # Python 3.8 and below are end-of-life (no longer receive security patches)
-    if major == 3 and minor >= 9:
-        status = "PASS"
-        detail = f"Python {version} is current and supported."
-    elif major == 3 and minor == 8:
-        status = "WARNING"
-        detail = f"Python {version} is approaching end-of-life."
-    else:
-        status = "FAIL"
-        detail = f"Python {version} is end-of-life and no longer receives security patches."
-
-    return {
-        "check":          "Python Runtime Version Check",
-        "status":         status,
-        "detail":         detail,
-        "recommendation": "Always run supported software versions. Check python.org/downloads for the latest stable release.",
-        "nist_ref":       "PR.IP-12"
-    }
-
-
-def check_temp_files():
-    """
-    Look for potentially sensitive files left in the temp directory.
-    Attackers sometimes look for forgotten credentials or config files here.
-    NIST CSF Reference: PR.DS-3 (Asset management)
-    """
-    print("[*] Scanning temp directory for sensitive file types...")
-
-    # Identify the temp directory based on OS
-    if platform.system() == "Windows":
-        temp_dir = os.environ.get("TEMP", "C:\\Windows\\Temp")
-    else:
-        temp_dir = "/tmp"
-
-    # File extensions that could contain sensitive data
-    sensitive_extensions = [".key", ".pem", ".env", ".cfg", ".config", ".password", ".secret"]
-
-    flagged_files = []
-
-    try:
-        for filename in os.listdir(temp_dir):
-            for ext in sensitive_extensions:
-                if filename.lower().endswith(ext):
-                    flagged_files.append(filename)
-    except PermissionError:
+    def check_open_ports(self) -> Dict:
+        """
+        Check 2: Scan localhost for open/risky ports.
+        NIST CSF Reference: PR.AC-3 (Access Control)
+        
+        Common risky ports: 21 (FTP), 23 (Telnet), 445 (SMB), 3389 (RDP)
+        
+        Returns:
+            Dictionary with check results
+        """
+        risky_ports = {
+            21: "FTP (unencrypted file transfer)",
+            23: "Telnet (unencrypted remote shell)",
+            445: "SMB (Windows file sharing - common attack vector)",
+            3389: "RDP (Remote Desktop Protocol - brute force target)",
+            5985: "WinRM (Windows Remote Management)",
+            27017: "MongoDB (NoSQL database - should not be exposed)",
+            6379: "Redis (in-memory cache - often unsecured)"
+        }
+        
+        open_risky_ports = []
+        
+        for port, service_name in risky_ports.items():
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(0.5)
+                result = sock.connect_ex(("127.0.0.1", port))
+                sock.close()
+                
+                if result == 0:
+                    open_risky_ports.append(f"Port {port} ({service_name})")
+                    
+            except Exception as e:
+                pass
+        
+        if open_risky_ports:
+            status = "FAIL"
+            detail = f"Found open risky ports: {', '.join(open_risky_ports)}"
+            self.checks_failed += 1
+            severity = "CRITICAL"
+        else:
+            status = "PASS"
+            detail = "No commonly targeted ports detected as open on localhost"
+            self.checks_passed += 1
+            severity = "INFO"
+        
         return {
-            "check":          "Temp Directory Sensitive File Scan",
-            "status":         "INFO",
-            "detail":         f"Permission denied accessing {temp_dir}. Manual review recommended.",
-            "recommendation": "Ensure temp directories are regularly cleared and access is restricted.",
-            "nist_ref":       "PR.DS-3"
+            "check_number": 2,
+            "name": "Open Port Scan (Localhost)",
+            "status": status,
+            "detail": detail,
+            "fix": "Close or firewall any unnecessary ports. Use 'netstat -an' (Windows) or 'ss -tuln' (Linux) to review",
+            "nist_ref": "PR.AC-3",
+            "severity": severity
         }
 
-    if not flagged_files:
-        status = "PASS"
-        detail = f"No sensitive file types found in {temp_dir}."
-    else:
-        status = "WARNING"
-        detail = f"Potentially sensitive files in temp dir: {', '.join(flagged_files)}"
+    def check_environment_variables(self) -> Dict:
+        """
+        Check 3: Scan environment variables for sensitive names.
+        NIST CSF Reference: PR.DS-1 (Data Security)
+        
+        Returns:
+            Dictionary with check results
+        """
+        sensitive_keywords = [
+            "password", "passwd", "pwd", "secret", "token", "api_key",
+            "apikey", "private_key", "private-key", "aws_secret",
+            "db_password", "database_password", "oauth"
+        ]
+        
+        suspicious_vars = []
+        
+        for var_name, var_value in os.environ.items():
+            if any(keyword in var_name.lower() for keyword in sensitive_keywords):
+                suspicious_vars.append(f"{var_name}=***REDACTED***")
+        
+        if suspicious_vars:
+            status = "WARN"
+            detail = f"Found {len(suspicious_vars)} environment variable(s) with sensitive names: {', '.join(suspicious_vars[:3])}"
+            self.checks_failed += 1
+            severity = "MEDIUM"
+        else:
+            status = "PASS"
+            detail = "No obviously sensitive environment variables detected"
+            self.checks_passed += 1
+            severity = "INFO"
+        
+        return {
+            "check_number": 3,
+            "name": "Environment Variable Scan",
+            "status": status,
+            "detail": detail,
+            "fix": "Use secret management tools (HashiCorp Vault, AWS Secrets Manager) instead of env vars for production",
+            "nist_ref": "PR.DS-1",
+            "severity": severity
+        }
 
-    return {
-        "check":          "Temp Directory Sensitive File Scan",
-        "status":         status,
-        "detail":         detail,
-        "recommendation": "Regularly clear temp directories. Never store credentials or keys in temp folders.",
-        "nist_ref":       "PR.DS-3"
-    }
+    def check_python_version(self) -> Dict:
+        """
+        Check 4: Verify Python version is current and supported.
+        NIST CSF Reference: PR.IP-12 (Security Configuration Management)
+        
+        Returns:
+            Dictionary with check results
+        """
+        python_version = platform.python_version()
+        version_tuple = sys.version_info
+        
+        supported_versions = [(3, 9), (3, 10), (3, 11), (3, 12)]
+        current_version = (version_tuple.major, version_tuple.minor)
+        
+        if current_version in supported_versions:
+            status = "PASS"
+            detail = f"Python {python_version} is currently supported"
+            self.checks_passed += 1
+            severity = "INFO"
+        else:
+            status = "FAIL" if current_version < (3, 9) else "WARN"
+            detail = f"Python {python_version} may be outdated or unsupported"
+            if status == "FAIL":
+                self.checks_failed += 1
+            severity = "MEDIUM"
+        
+        return {
+            "check_number": 4,
+            "name": "Python Version Check",
+            "status": status,
+            "detail": detail,
+            "fix": f"Upgrade to Python 3.10 or later. Current: {python_version}",
+            "nist_ref": "PR.IP-12",
+            "severity": severity
+        }
+
+    def check_temp_directory(self) -> Dict:
+        """
+        Check 5: Scan temporary directories for sensitive files.
+        NIST CSF Reference: PR.DS-3 (Data Protection in Transit)
+        
+        Returns:
+            Dictionary with check results
+        """
+        sensitive_extensions = [
+            ".key", ".pem", ".p12", ".pfx",
+            ".sql", ".db",
+            ".env", ".conf",
+            ".txt", ".log"
+        ]
+        
+        temp_dirs = []
+        if self.os_type == "Windows":
+            temp_dirs = [os.environ.get("TEMP", "C:\\Temp")]
+        else:
+            temp_dirs = ["/tmp", os.path.expanduser("~/.tmp")]
+        
+        suspicious_files = []
+        
+        for temp_dir in temp_dirs:
+            if not os.path.exists(temp_dir):
+                continue
+            
+            try:
+                for root, dirs, files in os.walk(temp_dir):
+                    if root.count(os.sep) - temp_dir.count(os.sep) > 2:
+                        dirs.clear()
+                        continue
+                    
+                    for file in files[:50]:
+                        if any(file.endswith(ext) for ext in sensitive_extensions):
+                            rel_path = os.path.relpath(os.path.join(root, file), temp_dir)
+                            suspicious_files.append(rel_path)
+                            
+            except PermissionError:
+                pass
+        
+        if suspicious_files:
+            status = "WARN"
+            detail = f"Found {len(suspicious_files)} potentially sensitive file(s) in temp directories"
+            self.checks_failed += 1
+            severity = "MEDIUM"
+        else:
+            status = "PASS"
+            detail = "No obviously sensitive files detected in temp directories"
+            self.checks_passed += 1
+            severity = "INFO"
+        
+        return {
+            "check_number": 5,
+            "name": "Temporary Directory Scan",
+            "status": status,
+            "detail": detail,
+            "fix": "Regularly clean temp directories. Use 'Disk Cleanup' (Windows) or 'rm -rf /tmp/*' (Linux)",
+            "nist_ref": "PR.DS-3",
+            "severity": severity
+        }
+
+    def calculate_risk_score(self) -> Tuple[int, str]:
+        """
+        Calculate overall risk score based on check results.
+        
+        Scoring: 
+        - Each passed check = +20 points (5 checks total)
+        - Each failed/warning = -10 points per issue
+        
+        Returns:
+            Tuple of (score out of 10, risk_level_string)
+        """
+        total_checks = self.checks_passed + self.checks_failed
+        if total_checks == 0:
+            return 5, "UNKNOWN"
+        
+        score = (self.checks_passed / total_checks) * 10
+        
+        if score >= 8:
+            risk_level = "LOW RISK"
+        elif score >= 6:
+            risk_level = "MEDIUM RISK"
+        elif score >= 4:
+            risk_level = "HIGH RISK"
+        else:
+            risk_level = "CRITICAL RISK"
+        
+        return round(score, 1), risk_level
+
+    def run_all_checks(self) -> List[Dict]:
+        """
+        Execute all security checks in sequence.
+        
+        Returns:
+            List of check results
+        """
+        print("🔍 Running security checks...\n")
+        
+        checks = [
+            self.check_os_identification,
+            self.check_open_ports,
+            self.check_environment_variables,
+            self.check_python_version,
+            self.check_temp_directory
+        ]
+        
+        for check_func in checks:
+            result = check_func()
+            self.findings.append(result)
+            status_emoji = "✅" if result["status"] == "PASS" else "⚠️ " if result["status"] == "WARN" else "❌"
+            print(f"{status_emoji} {result['name']}: {result['status']}")
+        
+        return self.findings
+
+    def generate_report(self, output_format: str = "json") -> str:
+        """
+        Generate audit report in specified format.
+        
+        Args:
+            output_format: "json", "text", or "both"
+            
+        Returns:
+            Report as string
+        """
+        score, risk_level = self.calculate_risk_score()
+        
+        report_data = {
+            "audit_metadata": {
+                "auditor": self.auditor_name,
+                "hostname": self.hostname,
+                "os": self.os_type,
+                "ip_address": self.ip_address,
+                "audit_time": self.audit_time,
+                "python_version": platform.python_version()
+            },
+            "audit_summary": {
+                "total_checks": len(self.findings),
+                "passed": self.checks_passed,
+                "failed": self.checks_failed,
+                "risk_score": f"{score}/10",
+                "risk_level": risk_level
+            },
+            "findings": self.findings
+        }
+        
+        if output_format == "json":
+            return json.dumps(report_data, indent=2)
+        elif output_format == "text":
+            return self._format_text_report(report_data)
+        else:
+            return json.dumps(report_data, indent=2)
+
+    def _format_text_report(self, report_data: Dict) -> str:
+        """Format report as readable text."""
+        lines = []
+        lines.append("=" * 80)
+        lines.append("SECURITY AUDIT REPORT".center(80))
+        lines.append("=" * 80)
+        lines.append("")
+        
+        metadata = report_data["audit_metadata"]
+        lines.append(f"Auditor:        {metadata['auditor']}")
+        lines.append(f"Hostname:       {metadata['hostname']}")
+        lines.append(f"OS:             {metadata['os']}")
+        lines.append(f"IP Address:     {metadata['ip_address']}")
+        lines.append(f"Audit Time:     {metadata['audit_time']}")
+        lines.append(f"Python:         {metadata['python_version']}")
+        lines.append("")
+        
+        summary = report_data["audit_summary"]
+        lines.append(f"Score:          {summary['risk_score']} — {summary['risk_level']}")
+        lines.append(f"Checks Run:     {summary['total_checks']} (Passed: {summary['passed']}, Failed: {summary['failed']})")
+        lines.append("=" * 80)
+        lines.append("")
+        
+        for finding in report_data["findings"]:
+            lines.append(f"[{finding['check_number']}] {finding['name']}")
+            lines.append(f"    Status:     {finding['status']}")
+            lines.append(f"    Detail:     {finding['detail']}")
+            lines.append(f"    Fix:        {finding['fix']}")
+            lines.append(f"    NIST CSF:   {finding['nist_ref']}")
+            lines.append(f"    Severity:   {finding['severity']}")
+            lines.append("")
+        
+        return "\n".join(lines)
+
+    def save_report(self, filename: str, output_format: str = "json"):
+        """
+        Save report to file.
+        
+        Args:
+            filename: Output filename
+            output_format: "json" or "text"
+        """
+        report_content = self.generate_report(output_format)
+        
+        try:
+            with open(filename, "w") as f:
+                f.write(report_content)
+            print(f"✅ Report saved to: {filename}")
+        except Exception as e:
+            print(f"❌ Error saving report: {e}")
 
 
-# ─────────────────────────────────────────────
-# SECTION 3: REPORT GENERATION
-# Takes all results and produces a clean report
-# ─────────────────────────────────────────────
-
-def calculate_score(results):
-    """
-    Calculate a simple security score based on check outcomes.
-    PASS = 2 pts, WARNING = 1 pt, FAIL = 0 pts, INFO = 1 pt
-    """
-    scoring = {"PASS": 2, "WARNING": 1, "FAIL": 0, "INFO": 1}
-    total_possible = len(results) * 2
-    earned = sum(scoring.get(r["status"], 0) for r in results)
-    percentage = round((earned / total_possible) * 100)
-    return earned, total_possible, percentage
-
-
-def generate_report(system_info, results):
-    """Build and print the final audit report to the console and save as JSON."""
-
-    earned, total, percentage = calculate_score(results)
-
-    # Determine overall risk rating
-    if percentage >= 80:
-        risk_rating = "LOW RISK"
-    elif percentage >= 50:
-        risk_rating = "MEDIUM RISK"
-    else:
-        risk_rating = "HIGH RISK"
-
-    # ── Console Report ──────────────────────────
-    print("\n")
-    print("=" * 65)
-    print("         SECURITY AUDIT REPORT")
-    print("=" * 65)
-    print(f"  Auditor     : {system_info['auditor']}")
-    print(f"  Hostname    : {system_info['hostname']}")
-    print(f"  OS          : {system_info['os']} {system_info['os_version'][:40]}")
-    print(f"  IP Address  : {system_info['ip_address']}")
-    print(f"  Audit Time  : {system_info['audit_time']}")
-    print(f"  Score       : {earned}/{total} ({percentage}%) — {risk_rating}")
-    print("=" * 65)
-
-    # Status icons for readability
-    icons = {"PASS": "✅", "WARNING": "⚠️ ", "FAIL": "❌", "INFO": "ℹ️ "}
-
-    for i, result in enumerate(results, 1):
-        icon = icons.get(result["status"], "•")
-        print(f"\n[{i}] {icon} {result['check']}")
-        print(f"     Status : {result['status']}")
-        print(f"     Detail : {result['detail']}")
-        print(f"     Fix    : {result['recommendation']}")
-        print(f"     NIST   : {result['nist_ref']}")
-
-    print("\n" + "=" * 65)
-    print("  SUMMARY")
-    print("=" * 65)
-    pass_count    = sum(1 for r in results if r["status"] == "PASS")
-    warning_count = sum(1 for r in results if r["status"] == "WARNING")
-    fail_count    = sum(1 for r in results if r["status"] == "FAIL")
-    print(f"  ✅ Passed  : {pass_count}")
-    print(f"  ⚠️  Warnings: {warning_count}")
-    print(f"  ❌ Failed  : {fail_count}")
-    print(f"\n  Overall Risk: {risk_rating}")
-    print("=" * 65)
-
-    # ── Save JSON Report ────────────────────────
-    report_data = {
-        "system_info": system_info,
-        "score": {"earned": earned, "total": total, "percentage": percentage, "risk_rating": risk_rating},
-        "results": results
-    }
-
-    report_filename = f"audit_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(report_filename, "w") as f:
-        json.dump(report_data, f, indent=4)
-
-    print(f"\n  📄 Full report saved to: {report_filename}")
-    print("=" * 65)
+def main():
+    """Main entry point with CLI argument support."""
+    parser = argparse.ArgumentParser(
+        description="Security Audit Tool - Automated local system security checks",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python security_audit.py                    # Run audit, save JSON report
+  python security_audit.py --auditor "Jane"   # Custom auditor name
+  python security_audit.py --text             # Print text report only
+  python security_audit.py --output audit.json --text  # Save JSON and print text
+        """
+    )
+    
+    parser.add_argument(
+        "--auditor",
+        type=str,
+        default="Security Audit Tool",
+        help="Name of the auditor (default: Security Audit Tool)"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="security_audit_report.json",
+        help="Output filename for JSON report (default: security_audit_report.json)"
+    )
+    parser.add_argument(
+        "--text",
+        action="store_true",
+        help="Print text-formatted report to console"
+    )
+    parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="Don't save JSON report to file"
+    )
+    
+    args = parser.parse_args()
+    
+    # Create audit instance and run
+    audit = SecurityAudit(auditor_name=args.auditor)
+    audit.run_all_checks()
+    
+    # Display text report if requested
+    if args.text:
+        print("\n" + audit.generate_report("text"))
+    
+    # Save JSON report unless disabled
+    if not args.no_save:
+        audit.save_report(args.output, "json")
+    
+    # Print summary
+    score, risk_level = audit.calculate_risk_score()
+    print(f"\n📊 Audit Complete: {score}/10 — {risk_level}")
 
 
-# ─────────────────────────────────────────────
-# SECTION 4: MAIN — Run the audit
-# ─────────────────────────────────────────────
-
-def run_audit():
-    """Main function — runs all checks and generates the report."""
-
-    print("\n" + "=" * 65)
-    print("  Starting Security Audit...")
-    print("  Author: Marcus Albright | NIST CSF Aligned")
-    print("=" * 65 + "\n")
-
-    # Step 1: Collect system info
-    system_info = get_system_info()
-
-    # Step 2: Run each security check
-    # Add new check functions here as you expand the tool
-    checks = [
-        check_os_type,
-        check_open_ports,
-        check_environment_variables,
-        check_python_version,
-        check_temp_files,
-    ]
-
-    results = []
-    for check_fn in checks:
-        result = check_fn()
-        results.append(result)
-
-    # Step 3: Generate the report
-    generate_report(system_info, results)
-
-
-# Python entry point — only runs if this file is executed directly
 if __name__ == "__main__":
-    run_audit()
+    main()
+```
+
+---
+
+After you paste it, click **"Commit changes"** and write a commit message like:
+```
+Refactor: Enhanced security audit tool with OOP architecture and CLI
+
+- Convert to class-based SecurityAudit architecture
+- Add type hints throughout
+- Implement argparse CLI with 4 options
+- Add comprehensive error handling
+- Improve reporting (JSON + text formats)
+- Add risk scoring and severity levels
+- Add inline comments for learning
