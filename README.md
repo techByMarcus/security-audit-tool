@@ -284,17 +284,18 @@ MIT License — Free to use, modify, and distribute.
 
 **Attribution:** If you use this code, please credit Marcus Albright.
 
+
+```
 ---
 
-**Happy learning! 🎓**
+**Ready to use this tool? Clone the repository and run:**
+```bash
+python security_audit.py --auditor "Your Name" --text
+```
+
+For more details, see the Quick Start section above.
 
 *Last updated: March 2025*  
 *Python version: 3.9+*  
-*Status: Production-ready & Educational*
-```
-
----
-
-After you paste it, **commit with message:**
-```
-Update: Enhanced README with usage examples, learning points, and NIST alignment
+*Status: Production-ready & Professional*
+--
