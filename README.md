@@ -1,133 +1,51 @@
-# 🔐 Security Audit Tool - Enhanced Edition
+# Security Audit Tool
 
 **Author:** Marcus Albright  
 **Language:** Python 3.9+  
-**Level:** Beginner → Intermediate  
-**Framework:** NIST Cybersecurity Framework (CSF)
+**Framework Alignment:** NIST Cybersecurity Framework (CSF)  
+**Status:** Production-ready
 
 ---
 
-## 📋 Overview
+## Overview
 
-A lightweight Python tool that performs automated security checks on your local system and generates detailed audit reports. Built to teach real cybersecurity concepts while building practical Python skills.
+A Python-based automated security audit tool that performs structured system security checks and generates risk-scored findings reports — aligned to NIST CSF controls. Designed to surface actionable security posture data in environments where manual audits are time-intensive or inconsistently applied.
 
-**What you'll learn building this:**
-- Object-oriented Python (classes, methods)
-- Error handling & safe operations
-- CLI argument parsing
-- JSON data structures & file I/O
-- System interaction (sockets, environment, file system)
-- Security best practices
+This tool reflects the same structured, evidence-based approach used in professional GRC and security operations work: define the control, test the condition, document the finding, assign a risk rating, recommend a fix.
 
 ---
 
-## 🎯 What It Checks
+## What It Audits
 
-| Check | NIST CSF | What It Does |
-|-------|----------|-------------|
-| **OS Identification** | PR.IP-1 | Detects OS type, version, and recommends hardening |
-| **Open Ports** | PR.AC-3 | Scans for risky ports (FTP, RDP, SMB, etc.) |
-| **Environment Variables** | PR.DS-1 | Flags sensitive variable names (passwords, tokens) |
-| **Python Version** | PR.IP-12 | Checks if runtime is current & supported |
-| **Temp Directory Scan** | PR.DS-3 | Looks for sensitive files in `/tmp` or `%TEMP%` |
+| Check | NIST CSF Reference | Risk Area |
+|---|---|---|
+| OS Identification & Patch Status | PR.IP-1 | Asset Management |
+| Open Port Exposure (Localhost) | PR.AC-3 | Access Control |
+| Sensitive Environment Variables | PR.DS-1 | Data Security |
+| Python Runtime Currency | PR.IP-12 | Vulnerability Management |
+| Temporary Directory Contents | PR.DS-3 | Data Protection |
 
----
-
-## 🚀 Quick Start
-
-### Requirements
-- Python 3.9 or higher
-- **No external dependencies** (uses Python standard library only)
-
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/techByMarcus/security-audit-tool.git
-cd security-audit-tool
-
-# Verify Python version
-python --version
-# Should output: Python 3.9.x or higher
-```
-
-### Basic Usage
-```bash
-# Run default audit
-python security_audit.py
-
-# Run with custom auditor name
-python security_audit.py --auditor "Marcus Albright"
-
-# Print text report to console
-python security_audit.py --text
-
-# Save report and print text report
-python security_audit.py --output my_audit.json --text
-
-# Run audit without saving JSON file
-python security_audit.py --no-save --text
-```
-
-### Example Output
-```
-🔍 Running security checks...
-
-✅ Operating System Identification: PASS
-✅ Open Port Scan (Localhost): PASS
-⚠️  Environment Variable Scan: WARN
-✅ Python Version Check: PASS
-✅ Temporary Directory Scan: PASS
-
-📊 Audit Complete: 8.2/10 — LOW RISK
-✅ Report saved to: security_audit_report.json
-```
+Each check produces a structured finding with: status, detail, remediation guidance, NIST CSF reference, and severity rating.
 
 ---
 
-## 📊 Sample Report Output
+## Output
 
-### Console (Text Format)
+The tool generates a **risk-scored audit report** in both JSON and console formats:
+
 ```
-================================================================================
-                        SECURITY AUDIT REPORT
-================================================================================
-
-Auditor:        Marcus Albright
-Hostname:       DESKTOP-EXAMPLE
-OS:             Windows 10
-IP Address:     192.168.1.100
-Audit Time:     2025-03-16 14:32:00
-Python:         3.11.5
-
-Score:          8.2/10 — LOW RISK
-Checks Run:     5 (Passed: 4, Failed: 1)
-================================================================================
-
-[1] Operating System Identification
-    Status:     PASS
-    Detail:     OS: Windows 10
-    Fix:        Ensure OS is fully patched and hardening guides are applied.
-    NIST CSF:   PR.IP-1
-    Severity:   INFO
-
-[2] Open Port Scan (Localhost)
-    Status:     PASS
-    Detail:     No commonly targeted ports detected as open on localhost.
-    Fix:        Close or firewall any unnecessary ports.
-    NIST CSF:   PR.AC-3
-    Severity:   INFO
+Score:      8.2 / 10 — LOW RISK
+Checks Run: 5  (Passed: 4 / Warnings: 1 / Failed: 0)
 ```
 
-### JSON Report (`security_audit_report.json`)
+**JSON report structure:**
 ```json
 {
   "audit_metadata": {
     "auditor": "Marcus Albright",
     "hostname": "DESKTOP-EXAMPLE",
-    "os": "Windows",
-    "ip_address": "192.168.1.100",
-    "audit_time": "2025-03-16 14:32:00",
-    "python_version": "3.11.5"
+    "os": "Windows 10",
+    "audit_time": "2025-03-16 14:32:00"
   },
   "audit_summary": {
     "total_checks": 5,
@@ -152,150 +70,69 @@ Checks Run:     5 (Passed: 4, Failed: 1)
 
 ---
 
-## 🛠️ Project Structure
+## Quick Start
+
+**Requirements:** Python 3.9+ · No external dependencies
+
+```bash
+# Clone
+git clone https://github.com/techByMarcus/security-audit-tool.git
+cd security-audit-tool
+
+# Run default audit
+python security_audit.py
+
+# Run with auditor name, output to file, print to console
+python security_audit.py --auditor "Marcus Albright" --output audit_report.json --text
+
+# Console output only — no file saved
+python security_audit.py --no-save --text
+```
+
+---
+
+## Design Notes
+
+- **Localhost-only scanning** — no external network calls; safe to run in any environment
+- **Read-only operations** — no modifications to system files or directories
+- **No external dependencies** — standard Python library only; minimal attack surface
+- **Sensitive value redaction** — environment variable values are never written to reports
+- **Structured output** — JSON reports are designed for downstream ingestion or integration with SIEM tooling
+
+---
+
+## Repository Structure
+
 ```
 security-audit-tool/
-├── security_audit.py          # Main audit script (~450 lines, well-commented)
-├── README.md                  # This file
-├── sample_report.json         # Example JSON output
-└── .gitignore                 # (Optional) Exclude report files from git
-```
-
-### `.gitignore` (Recommended)
-```
-# Ignore generated reports
-security_audit_report*.json
-*.json.bak
-
-# Ignore Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.pytest_cache/
-
-# IDE
-.vscode/
-.idea/
-*.swp
+├── security_audit.py       # Main audit engine (~450 lines)
+├── sample_report.json      # Example JSON output
+└── README.md
 ```
 
 ---
 
-## 📚 Python Learning Points
+## Certifications & Framework Context
 
-### Key Concepts Demonstrated
+This tool was built in parallel with formal security training and reflects applied knowledge from:
 
-#### 1. **Object-Oriented Programming (Classes)**
-```python
-class SecurityAudit:
-    """Encapsulates audit logic and state"""
-    def __init__(self, auditor_name: str = "Tool"):
-        self.auditor_name = auditor_name
-        self.findings = []
-    
-    def check_os_identification(self):
-        # Methods perform specific tasks
-        pass
-```
-
-#### 2. **Type Hints** (Python 3.5+)
-```python
-def calculate_risk_score(self) -> Tuple[int, str]:
-    """Return type shows: int score + str risk_level"""
-    return round(score, 1), risk_level
-```
-
-#### 3. **Error Handling with Try/Except**
-```python
-try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(("127.0.0.1", port))
-except Exception as e:
-    print(f"Error: {e}")
-```
-
-#### 4. **Dictionary & List Operations**
-```python
-findings = {
-    "check_number": 1,
-    "status": "PASS",
-    "detail": "..."
-}
-
-json_string = json.dumps(findings, indent=2)
-```
-
-#### 5. **Command-Line Arguments (argparse)**
-```python
-parser = argparse.ArgumentParser()
-parser.add_argument("--auditor", type=str, default="Tool")
-args = parser.parse_args()
-```
-
-#### 6. **File Operations**
-```python
-# Safe file writing
-with open(filename, "w") as f:
-    f.write(content)
-```
-
----
-
-## 🎓 Learning Resources
-
-### Certifications Completed
-- EC-Council Network Defense Essentials (NDE-112-51) — Sep 2025
 - University of Tennessee QuickStart Cybersecurity Bootcamp — May 2025
-- AWS Cloud Technical Essentials — Aug 2025
+- EC-Council Network Defense Essentials (NDE) — 2025
+- EC-Council Ethical Hacking Essentials (EHE) — 2025
+- NIST Cybersecurity Framework (CSF) — applied study
 
-### Python Resources
-- **Official Python Docs:** https://docs.python.org/3/
-- **Type Hints:** https://docs.python.org/3/library/typing.html
-- **Standard Library Reference:** https://docs.python.org/3/library/
-
-### Cybersecurity Resources
-- **NIST Cybersecurity Framework:** https://www.nist.gov/cyberframework
-- **CIS Benchmarks:** https://www.cisecurity.org/cis-benchmarks/
-- **OWASP Top 10:** https://owasp.org/www-project-top-ten/
+NIST CSF reference: [https://www.nist.gov/cyberframework](https://www.nist.gov/cyberframework)
 
 ---
 
-## 🛡️ Security Notes
+## Related Portfolio Work
 
-### What This Tool Does NOT Do
-- ❌ Network penetration testing
-- ❌ Malware scanning
-- ❌ Log analysis
-- ❌ Replace professional security assessments
-
-### Safe Operations
-- ✅ Only scans localhost (127.0.0.1) — no external scanning
-- ✅ Reads-only from `/tmp` and `%TEMP%` — no modifications
-- ✅ No external dependencies — less attack surface
-- ✅ Redacts sensitive values in reports
-- ✅ Standard library only — trusted source
+| Project | Description |
+|---|---|
+| [GRC Risk Assessment — Mortgage Lending](https://github.com/techByMarcus/grc-risk-assessment-financial-services) | NIST CSF applied to a regulated financial-services workflow — risk register, gap analysis, remediation roadmap |
+| [SOC Analyst Portfolio](https://github.com/techByMarcus/soc-analyst-portfolio) | 20+ incident investigations — alert triage, MITRE ATT&CK mapping, structured findings reports |
+| [Real-World Log Investigation](https://github.com/techByMarcus/real-world-log-investigation) | Account compromise simulation — authentication log analysis, attack timeline reconstruction, IOC identification |
 
 ---
 
-## 📄 License
-
-MIT License — Free to use, modify, and distribute.
-
-**Attribution:** If you use this code, please credit Marcus Albright.
-
-
-```
----
-
-**Ready to use this tool? Clone the repository and run:**
-```bash
-python security_audit.py --auditor "Your Name" --text
-```
-
-For more details, see the Quick Start section above.
-
-*Last updated: March 2025*  
-*Python version: 3.9+*  
-*Status: Production-ready & Professional*
---
+*Marcus Albright · [LinkedIn](https://www.linkedin.com/in/marcus-a-69ab2989) · [Portfolio](https://techbymarcus.github.io/aboutMarcus)*
