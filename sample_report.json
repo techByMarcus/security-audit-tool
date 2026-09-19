@@ -1,54 +1,62 @@
 {
-    "system_info": {
-        "hostname": "DESKTOP-EXAMPLE",
-        "os": "Windows",
-        "os_version": "10.0.19045",
-        "architecture": "AMD64",
-        "audit_time": "2025-09-01 14:32:00",
-        "auditor": "Marcus Albright",
-        "ip_address": "192.168.1.10"
+  "audit_metadata": {
+    "auditor": "Marcus Albright",
+    "hostname": "DESKTOP-EXAMPLE",
+    "local_ip": "192.168.1.10",
+    "operating_system": "Windows 11",
+    "audit_time_utc": "2026-09-18T20:15:00+00:00",
+    "python_version": "3.12.6"
+  },
+  "summary": {
+    "overall_status": "REVIEW_REQUIRED",
+    "counts": {
+      "PASS": 3,
+      "REVIEW": 1,
+      "INFO": 1,
+      "ERROR": 0
     },
-    "score": {
-        "earned": 8,
-        "total": 10,
-        "percentage": 80,
-        "risk_rating": "LOW RISK"
+    "scope_note": "Read-only baseline checks; results require analyst review and are not a compliance certification."
+  },
+  "findings": [
+    {
+      "name": "Platform Context",
+      "status": "INFO",
+      "severity": "INFO",
+      "detail": "Windows 11 10.0.26100",
+      "recommendation": "Review operating-system patching and hardening through the platform's approved management process.",
+      "csf_category": "PR.PS - Platform Security"
     },
-    "results": [
-        {
-            "check": "Operating System Identification",
-            "status": "PASS",
-            "detail": "Operating system detected: Windows",
-            "recommendation": "Ensure OS is fully patched and hardening guides are applied (CIS Benchmarks recommended).",
-            "nist_ref": "PR.IP-1"
-        },
-        {
-            "check": "Open Port Scan (Localhost)",
-            "status": "PASS",
-            "detail": "No commonly targeted ports detected as open on localhost.",
-            "recommendation": "Close or firewall any unused ports. Disable Telnet (port 23) immediately.",
-            "nist_ref": "PR.AC-3"
-        },
-        {
-            "check": "Environment Variable Sensitivity Scan",
-            "status": "WARNING",
-            "detail": "Potentially sensitive environment variables found: AWS_SECRET_KEY",
-            "recommendation": "Never store passwords or API keys in environment variables in production. Use a secrets manager.",
-            "nist_ref": "PR.DS-1"
-        },
-        {
-            "check": "Python Runtime Version Check",
-            "status": "PASS",
-            "detail": "Python 3.11.4 is current and supported.",
-            "recommendation": "Always run supported software versions. Check python.org/downloads for the latest stable release.",
-            "nist_ref": "PR.IP-12"
-        },
-        {
-            "check": "Temp Directory Sensitive File Scan",
-            "status": "PASS",
-            "detail": "No sensitive file types found in C:\\Windows\\Temp.",
-            "recommendation": "Regularly clear temp directories. Never store credentials or keys in temp folders.",
-            "nist_ref": "PR.DS-3"
-        }
-    ]
+    {
+      "name": "Local Service Exposure",
+      "status": "PASS",
+      "severity": "INFO",
+      "detail": "No listening services were detected on the reviewed localhost ports.",
+      "recommendation": "Continue periodic service and firewall review. This check covers only a small predefined port list.",
+      "csf_category": "PR.PS - Platform Security"
+    },
+    {
+      "name": "Environment Variable Secret Indicators",
+      "status": "REVIEW",
+      "severity": "MEDIUM",
+      "detail": "Variable names that may contain secrets: EXAMPLE_API_KEY. Values were not collected.",
+      "recommendation": "Confirm sensitive values are managed according to the environment's secrets-management policy and are not exposed in logs or source control.",
+      "csf_category": "PR.DS - Data Security"
+    },
+    {
+      "name": "Python Runtime Baseline",
+      "status": "PASS",
+      "severity": "INFO",
+      "detail": "Running Python 3.12.6; project minimum is Python 3.10.",
+      "recommendation": "Keep the interpreter patched and follow the Python project's published support lifecycle.",
+      "csf_category": "PR.PS - Platform Security"
+    },
+    {
+      "name": "Temporary File Review",
+      "status": "PASS",
+      "severity": "INFO",
+      "detail": "No configured high-signal sensitive file types were found in the first 84 temporary files reviewed.",
+      "recommendation": "Continue protecting temporary storage. This check is intentionally shallow and does not inspect file contents.",
+      "csf_category": "PR.DS - Data Security"
+    }
+  ]
 }
