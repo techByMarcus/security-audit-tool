@@ -1,138 +1,145 @@
 # Security Audit Tool
 
-**Author:** Marcus Albright  
-**Language:** Python 3.9+  
-**Framework Alignment:** NIST Cybersecurity Framework (CSF)  
-**Status:** Production-ready
+A small, read-only Python project for practicing host-security assessment and structured findings.
 
----
+I built this project to work through a practical analyst workflow: collect limited host context, check a few high-signal conditions, document what was observed, and produce findings that can be reviewed instead of presenting a black-box "security score."
 
-## Overview
+## What the tool checks
 
-A Python-based automated security audit tool that performs structured system security checks and generates risk-scored findings reports — aligned to NIST CSF controls. Designed to surface actionable security posture data in environments where manual audits are time-intensive or inconsistently applied.
+| Check | What it does | NIST CSF 2.0 context |
+| --- | --- | --- |
+| Platform context | Records the operating system and release for report context | PR.PS — Platform Security |
+| Local service exposure | Reviews a short list of commonly sensitive localhost ports | PR.PS — Platform Security |
+| Environment-variable secret indicators | Flags variable names that may contain secrets without collecting their values | PR.DS — Data Security |
+| Python runtime baseline | Compares the running interpreter with the project's Python 3.10 minimum | PR.PS — Platform Security |
+| Temporary-file review | Looks for a limited set of high-signal sensitive file extensions in temporary storage | PR.DS — Data Security |
 
-This tool reflects the same structured, evidence-based approach used in professional GRC and security operations work: define the control, test the condition, document the finding, assign a risk rating, recommend a fix.
+The NIST references are contextual mappings to CSF 2.0 categories. They are not a claim that this script performs a CSF assessment or compliance certification.
 
----
+## Why I changed the scoring model
 
-## What It Audits
+Earlier versions assigned a numeric "risk score" to a very small number of local checks. That created more precision than the evidence supported.
 
-| Check | NIST CSF Reference | Risk Area |
-|---|---|---|
-| OS Identification & Patch Status | PR.IP-1 | Asset Management |
-| Open Port Exposure (Localhost) | PR.AC-3 | Access Control |
-| Sensitive Environment Variables | PR.DS-1 | Data Security |
-| Python Runtime Currency | PR.IP-12 | Vulnerability Management |
-| Temporary Directory Contents | PR.DS-3 | Data Protection |
+The current version uses straightforward statuses instead:
 
-Each check produces a structured finding with: status, detail, remediation guidance, NIST CSF reference, and severity rating.
+- `PASS` — the specific condition checked was not observed
+- `REVIEW` — something was found that needs analyst context
+- `INFO` — contextual information, not a pass/fail security decision
+- `ERROR` — the check could not complete
 
----
+The report returns `REVIEW_REQUIRED` when at least one finding needs follow-up.
 
-## Output
+## Example
 
-The tool generates a **risk-scored audit report** in both JSON and console formats:
+```text
+[INFO] Platform Context
+[PASS] Local Service Exposure
+[REVIEW] Environment Variable Secret Indicators
+[PASS] Python Runtime Baseline
+[PASS] Temporary File Review
 
-```
-Score:      8.2 / 10 — LOW RISK
-Checks Run: 5  (Passed: 4 / Warnings: 1 / Failed: 0)
-```
-
-**JSON report structure:**
-```json
-{
-  "audit_metadata": {
-    "auditor": "Marcus Albright",
-    "hostname": "DESKTOP-EXAMPLE",
-    "os": "Windows 10",
-    "audit_time": "2025-03-16 14:32:00"
-  },
-  "audit_summary": {
-    "total_checks": 5,
-    "passed": 4,
-    "failed": 1,
-    "risk_score": "8.2/10",
-    "risk_level": "LOW RISK"
-  },
-  "findings": [
-    {
-      "check_number": 1,
-      "name": "Operating System Identification",
-      "status": "PASS",
-      "detail": "OS: Windows 10",
-      "fix": "Ensure OS is fully patched and hardening guides are applied.",
-      "nist_ref": "PR.IP-1",
-      "severity": "INFO"
-    }
-  ]
-}
+Overall status: REVIEW_REQUIRED
 ```
 
----
+The environment-variable check records names only. Values are never written to the report.
 
-## Quick Start
+## Quick start
 
-**Requirements:** Python 3.9+ · No external dependencies
+Requirements: Python 3.10 or later. No third-party packages are required.
 
 ```bash
-# Clone
 git clone https://github.com/techByMarcus/security-audit-tool.git
 cd security-audit-tool
 
-# Run default audit
-python security_audit.py
+python security_audit.py --text
+```
 
-# Run with auditor name, output to file, print to console
+Write the JSON report to a custom path:
+
+```bash
 python security_audit.py --auditor "Marcus Albright" --output audit_report.json --text
+```
 
-# Console output only — no file saved
+Run without saving a report:
+
+```bash
 python security_audit.py --no-save --text
 ```
 
----
+## Example JSON structure
 
-## Design Notes
-
-- **Localhost-only scanning** — no external network calls; safe to run in any environment
-- **Read-only operations** — no modifications to system files or directories
-- **No external dependencies** — standard Python library only; minimal attack surface
-- **Sensitive value redaction** — environment variable values are never written to reports
-- **Structured output** — JSON reports are designed for downstream ingestion or integration with SIEM tooling
-
----
-
-## Repository Structure
-
+```json
+{
+  "summary": {
+    "overall_status": "REVIEW_REQUIRED",
+    "counts": {
+      "PASS": 3,
+      "REVIEW": 1,
+      "INFO": 1,
+      "ERROR": 0
+    },
+    "scope_note": "Read-only baseline checks; results require analyst review and are not a compliance certification."
+  }
+}
 ```
+
+See [`sample_report.json`](./sample_report.json) for a fuller example.
+
+## Tests
+
+The repository includes unit tests for:
+
+- secret-value redaction
+- environment-variable detection
+- local-port outcomes
+- temporary-file detection
+- report generation
+- overall-status logic
+- local IP lookup fallback
+
+Run them with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+A GitHub Actions workflow runs the test suite on Python 3.10, 3.11, 3.12, and 3.13 for pull requests and changes to `main`.
+
+## Repository structure
+
+```text
 security-audit-tool/
-├── security_audit.py       # Main audit engine (~450 lines)
-├── sample_report.json      # Example JSON output
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── tests/
+│   └── test_security_audit.py
+├── security_audit.py
+├── sample_report.json
+├── .gitignore
 └── README.md
 ```
 
----
+## Scope and limitations
 
-## Certifications & Framework Context
+This project is intentionally limited.
 
-This tool was built in parallel with formal security training and reflects applied knowledge from:
+- It checks localhost only; it is not a network scanner.
+- The port list is small and predefined.
+- Environment-variable detection is based on variable names, not secret contents.
+- Temporary-file review looks only at selected file extensions and does not inspect file contents.
+- A `PASS` means only that the condition checked was not observed. It does not mean the host is secure.
+- The tool does not replace vulnerability scanners, EDR, SIEM, patch management, hardening benchmarks, or a formal risk assessment.
 
-- University of Tennessee QuickStart Cybersecurity Bootcamp — May 2025
-- EC-Council Network Defense Essentials (NDE) — 2025
-- EC-Council Ethical Hacking Essentials (EHE) — 2025
-- NIST Cybersecurity Framework (CSF) — applied study
+## Training context
 
-NIST CSF reference: [https://www.nist.gov/cyberframework](https://www.nist.gov/cyberframework)
+This project is part of my cybersecurity portfolio and reflects hands-on study in security operations, network defense, risk, and incident analysis.
 
----
+Related work:
 
-## Related Portfolio Work
+- [SOC Analyst Portfolio](https://github.com/techByMarcus/soc-analyst-portfolio)
+- [Real-World Log Investigation](https://github.com/techByMarcus/real-world-log-investigation)
+- [GRC Risk Assessment — Financial Services](https://github.com/techByMarcus/grc-risk-assessment-financial-services)
+- [Portfolio](https://techbymarcus.github.io/aboutMarcus/)
 
-| Project | Description |
-|---|---|
-| [GRC Risk Assessment — Mortgage Lending](https://github.com/techByMarcus/grc-risk-assessment-financial-services) | NIST CSF applied to a regulated financial-services workflow — risk register, gap analysis, remediation roadmap |
-| [SOC Analyst Portfolio](https://github.com/techByMarcus/soc-analyst-portfolio) | 20+ incident investigations — alert triage, MITRE ATT&CK mapping, structured findings reports |
-| [Real-World Log Investigation](https://github.com/techByMarcus/real-world-log-investigation) | Account compromise simulation — authentication log analysis, attack timeline reconstruction, IOC identification |
-
----
-
-*Marcus Albright · [LinkedIn](https://www.linkedin.com/in/marcus-a-69ab2989) · [Portfolio](https://techbymarcus.github.io/aboutMarcus)*
+NIST Cybersecurity Framework: https://www.nist.gov/cyberframework
