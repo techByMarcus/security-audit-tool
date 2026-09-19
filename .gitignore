@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+security_audit_report.json
+audit_report.json
+.venv/
